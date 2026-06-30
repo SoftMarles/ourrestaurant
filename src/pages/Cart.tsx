@@ -45,7 +45,7 @@ export default function Cart() {
     setLoading(true);
     const { data: order, error } = await supabase
       .from("orders")
-      .insert({ ...parsed.data, user_id: user?.id ?? null, total_cents: total })
+      .insert({ ...parsed.data, user_id: user?.id ?? null, total_cents: total } as any)
       .select("id, tracking_code")
       .single();
     if (error || !order) {

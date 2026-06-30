@@ -42,7 +42,7 @@ export default function Reserve() {
     setLoading(true);
     const { data, error } = await supabase
       .from("reservations")
-      .insert({ ...parsed.data, user_id: user?.id ?? null })
+      .insert({ ...parsed.data, user_id: user?.id ?? null } as any)
       .select("tracking_code")
       .single();
     setLoading(false);
