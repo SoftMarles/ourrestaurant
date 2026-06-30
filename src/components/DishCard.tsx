@@ -17,7 +17,7 @@ export type Dish = {
 export default function DishCard({ dish }: { dish: Dish }) {
   const add = useCart((s) => s.add);
   return (
-    <article className="card-dish">
+    <article className="group card-dish">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {dish.image_url && (
           <img
