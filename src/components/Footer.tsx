@@ -1,89 +1,49 @@
-import { Tent, Instagram, Facebook, Twitter, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
-const Footer = () => {
-  return <footer className="bg-foreground text-background py-20 lg:py-24">
-      <div className="container mx-auto px-6 lg:px-12">
-        <div className="flex flex-col gap-10 lg:gap-12">
-          {/* Brand Row */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Tent className="h-4 w-4" />
-              <span className="text-sm font-normal tracking-wide">Wild Haven</span>
-            </div>
-            <p className="text-background/70 text-xs font-light leading-relaxed max-w-xs">
-              Creating meaningful connections with nature through sustainable off-grid experiences.
-            </p>
+import { Instagram, Facebook, Twitter } from "lucide-react";
+
+export default function Footer() {
+  return (
+    <footer className="bg-secondary text-secondary-foreground">
+      <div className="container py-16 grid gap-10 md:grid-cols-4">
+        <div className="md:col-span-2">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground font-display font-bold text-lg">O</span>
+            <span className="font-display text-xl font-bold">Ours<span className="text-primary">Restaurant</span></span>
           </div>
-
-          {/* Pages Row - Two Columns on Mobile */}
-          <div>
-            <h4 className="text-sm font-medium mb-4">Pages</h4>
-            <ul className="grid grid-cols-2 gap-x-8 gap-y-3">
-              <li>
-                <Link to="/" className="text-background/70 hover:text-background smooth-hover text-xs font-light">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link to="/locations" className="text-background/70 hover:text-background smooth-hover text-xs font-light">
-                  Locations
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="text-background/70 hover:text-background smooth-hover text-xs font-light">
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-background/70 hover:text-background smooth-hover text-xs font-light">
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <a href="/#booking" className="text-background/70 hover:text-background smooth-hover text-xs font-light">
-                  Book Now
-                </a>
-              </li>
-              <li>
-                <Link to="/admin" className="text-background/70 hover:text-background smooth-hover text-xs font-light">
-                  Admin Panel
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact Row */}
-          <div>
-            <h4 className="text-sm font-medium mb-4">Contact Us</h4>
-            <div className="flex flex-col gap-2 mb-8">
-              <a href="mailto:hello@wildhaven.com" className="text-background/70 hover:text-background smooth-hover text-xs font-light flex items-center gap-2">
-                <Mail className="h-3 w-3" />
-                hello@wildhaven.com
-              </a>
-              <p className="text-background/70 text-xs font-light">
-                Mon - Fri: 9am - 5pm
-              </p>
-            </div>
-
-            <h4 className="text-sm font-medium mb-4">Follow Us</h4>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-background/70 hover:text-background smooth-hover">
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a href="#" className="text-background/70 hover:text-background smooth-hover">
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href="#" className="text-background/70 hover:text-background smooth-hover">
-                <Twitter className="h-4 w-4" />
-              </a>
-            </div>
+          <p className="text-secondary-foreground/70 max-w-md">
+            Exceptional food, delivered to you. Reserve a table, order in, or track your meal in real time — no online payment required.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <a className="grid h-10 w-10 place-items-center rounded-full bg-white/10 hover:bg-primary transition" href="#"><Instagram className="h-4 w-4" /></a>
+            <a className="grid h-10 w-10 place-items-center rounded-full bg-white/10 hover:bg-primary transition" href="#"><Facebook className="h-4 w-4" /></a>
+            <a className="grid h-10 w-10 place-items-center rounded-full bg-white/10 hover:bg-primary transition" href="#"><Twitter className="h-4 w-4" /></a>
           </div>
         </div>
-
-        <div className="border-t border-background/20 pt-8 mt-12 text-center text-background/50 text-xs font-light">
-          <p>&copy; 2026 Wild Haven. All rights reserved.</p>
+        <div>
+          <h4 className="font-display font-semibold mb-4">Explore</h4>
+          <ul className="space-y-2 text-secondary-foreground/70">
+            <li><Link to="/menu" className="hover:text-primary">Menu</Link></li>
+            <li><Link to="/reserve" className="hover:text-primary">Reserve a table</Link></li>
+            <li><Link to="/track" className="hover:text-primary">Track order</Link></li>
+            <li><Link to="/about" className="hover:text-primary">About & Contact</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-display font-semibold mb-4">Visit</h4>
+          <ul className="space-y-2 text-secondary-foreground/70">
+            <li>123 Saffron Lane</li>
+            <li>Downtown · Open daily</li>
+            <li>11am — 11pm</li>
+            <li>hello@ours.restaurant</li>
+          </ul>
         </div>
       </div>
-    </footer>;
-};
-export default Footer;
+      <div className="border-t border-white/10">
+        <div className="container py-6 text-sm text-secondary-foreground/60 flex flex-col md:flex-row gap-2 justify-between">
+          <span>© 2026 OURS Restaurant. All rights reserved.</span>
+          <span>Crafted with care.</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
