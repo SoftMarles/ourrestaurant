@@ -1,291 +1,193 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { format } from "date-fns";
-import { Calendar, Users, DollarSign, MapPin, Mail, Phone, ArrowLeft, LogOut, Eye } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { mockBookings, getBookingStats } from "@/data/bookings";
-import { locations, getLocationById } from "@/data/locations";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, useRoles } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-const Admin = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const isDemo = searchParams.get("demo") === "true";
-  const { user, loading, signOut } = useAuth();
-  const [selectedLocation, setSelectedLocation] = useState("all");
-  const stats = getBookingStats();
+type Tab = "reservations" | "orders" | "dishes";
+
+export default function Admin() {
+  const { user, loading } = useAuth();
+  const { isStaff, isAdmin, loading: rolesLoading } = useRoles(user?.id);
+  const nav = useNavigate();
+  const [tab, setTab] = useState<Tab>("reservations");
+  const demo = new URLSearchParams(location.search).get("demo") === "true";
 
   useEffect(() => {
-    if (!loading && !user && !isDemo) {
-      navigate("/auth");
-    }
-  }, [loading, user, navigate, isDemo]);
+    if (loading || rolesLoading) return;
+    if (demo) return;
+    if (!user) nav("/auth");
+    else if (!isStaff) nav("/account");
+  }, [user, isStaff, loading, rolesLoading, demo, nav]);
 
-  if (loading && !isDemo) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-sm text-muted-foreground font-light">Loading...</p>
-      </div>
-    );
+  if (!demo && (loading || rolesLoading || !user || !isStaff)) {
+    return <div className="min-h-screen grid place-items-center">Loading…</div>;
   }
-
-  const filteredBookings = selectedLocation === "all" 
-    ? mockBookings 
-    : mockBookings.filter(b => b.locationId === selectedLocation);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const calculateRevenue = () => {
-    return filteredBookings
-      .filter(b => b.status !== 'cancelled')
-      .reduce((total, booking) => {
-        const location = getLocationById(booking.locationId);
-        if (!location) return total;
-        const nights = Math.ceil((booking.checkOut.getTime() - booking.checkIn.getTime()) / (1000 * 60 * 60 * 24));
-        return total + (location.price * nights);
-      }, 0);
-  };
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation variant="dark" />
-      
-      <main className="pt-24 pb-20">
-        <div className="container mx-auto px-6 lg:px-12">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-12"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/")}
-                className="text-[11px] uppercase tracking-wider font-normal"
-              >
-                <ArrowLeft className="mr-2 h-3 w-3" />
-                Back to Home
-              </Button>
-              {isDemo ? (
-                <Badge variant="outline" className="gap-1 text-xs font-light border-primary/30 text-primary">
-                  <Eye className="h-3 w-3" />
-                  Demo Mode
-                </Badge>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  className="text-[11px] uppercase tracking-wider font-normal text-destructive hover:text-destructive"
-                >
-                  <LogOut className="mr-2 h-3 w-3" />
-                  Sign Out
-                </Button>
-              )}
-            </div>
-            
-            <h1 className="text-3xl md:text-4xl font-light mb-3 tracking-tight">
-              Admin Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground font-light">
-              Manage your property bookings and monitor performance
-            </p>
-          </motion.div>
-
-          {/* Stats Cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"
-          >
-            <Card className="p-6 border border-border shadow-soft">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Calendar className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-              <p className="text-2xl font-light mb-1">{stats.total}</p>
-              <p className="text-xs text-muted-foreground font-light">Total Bookings</p>
-            </Card>
-            
-            <Card className="p-6 border border-border shadow-soft">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-green-600" />
-                </div>
-              </div>
-              <p className="text-2xl font-light mb-1">{stats.upcoming}</p>
-              <p className="text-xs text-muted-foreground font-light">Upcoming</p>
-            </Card>
-            
-            <Card className="p-6 border border-border shadow-soft">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <Calendar className="h-4 w-4 text-yellow-600" />
-                </div>
-              </div>
-              <p className="text-2xl font-light mb-1">{stats.pending}</p>
-              <p className="text-xs text-muted-foreground font-light">Pending</p>
-            </Card>
-            
-            <Card className="p-6 border border-border shadow-soft">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-              <p className="text-2xl font-light mb-1">${calculateRevenue().toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground font-light">Est. Revenue</p>
-            </Card>
-          </motion.div>
-
-          {/* Location Tabs */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Tabs defaultValue="all" onValueChange={setSelectedLocation}>
-              <TabsList className="mb-6 flex-wrap h-auto gap-2 bg-transparent p-0">
-                <TabsTrigger 
-                  value="all" 
-                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-4 py-1.5 text-xs font-light border border-border"
-                >
-                  All Locations
-                </TabsTrigger>
-                {locations.map((loc) => (
-                  <TabsTrigger 
-                    key={loc.id} 
-                    value={loc.id}
-                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-4 py-1.5 text-xs font-light border border-border"
-                  >
-                    {loc.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              <TabsContent value={selectedLocation} className="mt-0">
-                <Card className="border border-border shadow-soft overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border">
-                          <TableHead className="text-[11px] uppercase tracking-wider font-normal">Guest</TableHead>
-                          <TableHead className="text-[11px] uppercase tracking-wider font-normal">Location</TableHead>
-                          <TableHead className="text-[11px] uppercase tracking-wider font-normal">Dates</TableHead>
-                          <TableHead className="text-[11px] uppercase tracking-wider font-normal">Guests</TableHead>
-                          <TableHead className="text-[11px] uppercase tracking-wider font-normal">Status</TableHead>
-                          <TableHead className="text-[11px] uppercase tracking-wider font-normal">Contact</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredBookings.map((booking) => {
-                          const location = getLocationById(booking.locationId);
-                          return (
-                            <TableRow key={booking.id} className="border-border">
-                              <TableCell>
-                                <div>
-                                  <p className="text-sm font-normal">{booking.guestName}</p>
-                                  <p className="text-xs text-muted-foreground font-light">{booking.id}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-sm font-light">{location?.name || booking.locationId}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm font-light">
-                                  <p>{format(booking.checkIn, "MMM d")} - {format(booking.checkOut, "MMM d, yyyy")}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {Math.ceil((booking.checkOut.getTime() - booking.checkIn.getTime()) / (1000 * 60 * 60 * 24))} nights
-                                  </p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-sm font-light">{booking.guests}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs font-light capitalize ${getStatusColor(booking.status)}`}
-                                >
-                                  {booking.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <a 
-                                    href={`mailto:${booking.email}`} 
-                                    className="text-xs text-muted-foreground hover:text-primary font-light flex items-center gap-1"
-                                  >
-                                    <Mail className="h-3 w-3" />
-                                    {booking.email}
-                                  </a>
-                                  <a 
-                                    href={`tel:${booking.phone}`} 
-                                    className="text-xs text-muted-foreground hover:text-primary font-light flex items-center gap-1"
-                                  >
-                                    <Phone className="h-3 w-3" />
-                                    {booking.phone}
-                                  </a>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  
-                  {filteredBookings.length === 0 && (
-                    <div className="text-center py-12">
-                      <p className="text-sm text-muted-foreground font-light">No bookings found for this location</p>
-                    </div>
-                  )}
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </motion.div>
+      <Navigation />
+      <section className="container py-12">
+        <div className="flex items-end justify-between flex-wrap gap-4">
+          <div>
+            <p className="eyebrow">Staff</p>
+            <h1 className="mt-2 font-display text-4xl md:text-5xl font-bold">Admin Dashboard</h1>
+            <p className="mt-1 text-muted-foreground">{demo ? "Demo mode" : user?.email} · {isAdmin ? "Admin" : "Staff"}</p>
+          </div>
         </div>
-      </main>
 
+        <div className="mt-8 flex gap-2 border-b border-border">
+          {(["reservations", "orders", "dishes"] as Tab[]).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`px-5 py-3 text-sm font-semibold capitalize border-b-2 transition ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-8">
+          {tab === "reservations" && <ReservationsTab />}
+          {tab === "orders" && <OrdersTab />}
+          {tab === "dishes" && <DishesTab canEdit={isAdmin || demo} />}
+        </div>
+      </section>
       <Footer />
     </div>
   );
-};
+}
 
-export default Admin;
+function ReservationsTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const load = () => supabase.from("reservations").select("*").order("reserved_for", { ascending: false }).then(({ data }) => setRows(data ?? []));
+  useEffect(() => { load(); }, []);
+  const update = async (id: string, status: string) => {
+    const { error } = await supabase.from("reservations").update({ status: status as any }).eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("Updated"); load(); }
+  };
+  const statuses = ["pending", "confirmed", "seated", "completed", "cancelled"];
+  return (
+    <div className="space-y-3">
+      {rows.length === 0 && <p className="text-muted-foreground">No reservations.</p>}
+      {rows.map((r) => (
+        <div key={r.id} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)] grid md:grid-cols-[1fr_auto] gap-3 items-center">
+          <div>
+            <div className="font-display font-bold">{r.guest_name} · party of {r.party_size}</div>
+            <div className="text-sm text-muted-foreground">{new Date(r.reserved_for).toLocaleString()} · {r.guest_email}{r.guest_phone ? ` · ${r.guest_phone}` : ""}</div>
+            {r.notes && <div className="text-sm mt-1">{r.notes}</div>}
+            <div className="text-xs mt-1 text-primary font-mono">{r.tracking_code}</div>
+          </div>
+          <select value={r.status} onChange={(e) => update(r.id, e.target.value)} className="input w-44">
+            {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OrdersTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [items, setItems] = useState<Record<string, any[]>>({});
+  const load = () => supabase.from("orders").select("*").order("created_at", { ascending: false }).then(({ data }) => setRows(data ?? []));
+  useEffect(() => { load(); }, []);
+  const toggleItems = async (orderId: string) => {
+    if (items[orderId]) { setItems({ ...items, [orderId]: undefined as any }); return; }
+    const { data } = await supabase.from("order_items").select("*").eq("order_id", orderId);
+    setItems({ ...items, [orderId]: data ?? [] });
+  };
+  const update = async (id: string, status: string) => {
+    const { error } = await supabase.from("orders").update({ status: status as any }).eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("Updated"); load(); }
+  };
+  const statuses = ["received", "preparing", "ready", "out_for_delivery", "completed", "cancelled"];
+  return (
+    <div className="space-y-3">
+      {rows.length === 0 && <p className="text-muted-foreground">No orders.</p>}
+      {rows.map((o) => (
+        <div key={o.id} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]">
+          <div className="grid md:grid-cols-[1fr_auto] gap-3 items-center">
+            <div>
+              <div className="font-display font-bold">{o.guest_name} · ${(o.total_cents / 100).toFixed(2)}</div>
+              <div className="text-sm text-muted-foreground capitalize">{o.fulfillment.replace("_", " ")} · {o.guest_email}{o.guest_phone ? ` · ${o.guest_phone}` : ""}</div>
+              {o.address && <div className="text-sm">{o.address}</div>}
+              <div className="text-xs mt-1 text-primary font-mono">{o.tracking_code} · {new Date(o.created_at).toLocaleString()}</div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => toggleItems(o.id)} className="btn-ghost text-sm py-2">Items</button>
+              <select value={o.status} onChange={(e) => update(o.id, e.target.value)} className="input w-44">
+                {statuses.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+              </select>
+            </div>
+          </div>
+          {items[o.id] && (
+            <ul className="mt-4 border-t border-border pt-3 space-y-1 text-sm">
+              {items[o.id].map((i: any) => (
+                <li key={i.id} className="flex justify-between"><span>{i.quantity}× {i.dish_name}</span><span>${(i.line_total_cents / 100).toFixed(2)}</span></li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DishesTab({ canEdit }: { canEdit: boolean }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [form, setForm] = useState<any>({ name: "", category: "Burgers", price_cents: 1000, description: "", image_url: "", is_vegetarian: false, prep_minutes: 15, calories: 500, is_active: true });
+  const load = () => supabase.from("dishes").select("*").order("sort_order").then(({ data }) => setRows(data ?? []));
+  useEffect(() => { load(); }, []);
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase.from("dishes").insert(form);
+    if (error) toast.error(error.message); else { toast.success("Added"); load(); setForm({ ...form, name: "" }); }
+  };
+  const remove = async (id: string) => {
+    if (!confirm("Delete?")) return;
+    const { error } = await supabase.from("dishes").delete().eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
+  };
+  const toggleActive = async (d: any) => {
+    const { error } = await supabase.from("dishes").update({ is_active: !d.is_active }).eq("id", d.id);
+    if (error) toast.error(error.message); else load();
+  };
+  return (
+    <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="space-y-3">
+        {rows.map((d) => (
+          <div key={d.id} className="rounded-2xl bg-card p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
+            {d.image_url && <img src={d.image_url} alt={d.name} className="h-16 w-16 rounded-xl object-cover" />}
+            <div className="flex-1">
+              <div className="font-display font-bold">{d.name} <span className="text-xs text-muted-foreground">· {d.category}</span></div>
+              <div className="text-sm text-muted-foreground">${(d.price_cents / 100).toFixed(2)} · {d.is_active ? "Active" : "Hidden"}</div>
+            </div>
+            {canEdit && (
+              <div className="flex gap-2">
+                <button onClick={() => toggleActive(d)} className="btn-ghost text-xs py-1.5 px-3">{d.is_active ? "Hide" : "Show"}</button>
+                <button onClick={() => remove(d.id)} className="text-xs font-semibold text-destructive">Delete</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {canEdit && (
+        <form onSubmit={create} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)] space-y-3 h-fit sticky top-24">
+          <h3 className="font-display font-bold">Add dish</h3>
+          <input required className="input" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input className="input" placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+          <input className="input" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+          <textarea className="input min-h-16" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <div className="grid grid-cols-3 gap-2">
+            <input type="number" className="input" placeholder="¢" value={form.price_cents} onChange={(e) => setForm({ ...form, price_cents: +e.target.value })} />
+            <input type="number" className="input" placeholder="kcal" value={form.calories} onChange={(e) => setForm({ ...form, calories: +e.target.value })} />
+            <input type="number" className="input" placeholder="min" value={form.prep_minutes} onChange={(e) => setForm({ ...form, prep_minutes: +e.target.value })} />
+          </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.is_vegetarian} onChange={(e) => setForm({ ...form, is_vegetarian: e.target.checked })} /> Vegetarian</label>
+          <button className="btn-primary w-full">Add dish</button>
+          <p className="text-xs text-muted-foreground">Prices in cents (1299 = $12.99)</p>
+        </form>
+      )}
+    </div>
+  );
+}

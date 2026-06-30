@@ -1,205 +1,78 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Tent, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import Navigation from "@/components/Navigation";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
+import { lovable } from "@/integrations/lovable";
+import { toast } from "sonner";
 
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+export default function Auth() {
+  const nav = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
-          navigate("/admin");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/admin");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const validation = loginSchema.safeParse({ email, password });
-    if (!validation.success) {
-      toast({
-        title: "Validation Error",
-        description: validation.error.errors[0].message,
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
-
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          toast({
-            title: "Login Failed",
-            description: error.message === "Invalid login credentials" 
-              ? "Invalid email or password. Please try again." 
-              : error.message,
-            variant: "destructive",
-          });
-        }
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin`,
-          },
-        });
-        if (error) {
-          if (error.message.includes("already registered")) {
-            toast({
-              title: "Account Exists",
-              description: "This email is already registered. Please log in instead.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Sign Up Failed",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-        } else {
-          toast({
-            title: "Check Your Email",
-            description: "We've sent you a confirmation link. Please verify your email to continue.",
-          });
-        }
-      }
-    } catch {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
+      if (error) return toast.error(error.message);
+      toast.success("Signed in");
+      nav("/account");
+    } else {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin, data: { full_name: fullName } },
+      });
+      setLoading(false);
+      if (error) return toast.error(error.message);
+      toast.success("Check your email to confirm your account.");
     }
   };
 
+  const google = async () => {
+    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    if (res.error) toast.error(res.error.message);
+    if (!res.redirected && !res.error) nav("/account");
+  };
+
   return (
-    <div className="min-h-screen bg-foreground flex items-center justify-center px-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-sm"
-      >
-        <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Tent className="h-5 w-5 text-primary" />
-            <span className="text-sm font-normal tracking-wide text-background">
-              Wild Haven
-            </span>
-          </div>
-          <h1 className="text-2xl font-light text-background mb-2 tracking-tight">
-            {isLogin ? "Admin Login" : "Create Account"}
-          </h1>
-          <p className="text-xs text-background/60 font-light">
-            {isLogin
-              ? "Sign in to manage your properties"
-              : "Register for admin access"}
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <section className="container py-16 max-w-md">
+        <p className="eyebrow">{mode === "signin" ? "Welcome back" : "Get started"}</p>
+        <h1 className="mt-2 font-display text-4xl font-bold">{mode === "signin" ? "Sign in" : "Create account"}</h1>
+
+        <form onSubmit={submit} className="mt-8 rounded-2xl bg-card p-8 shadow-[var(--shadow-card)] space-y-4">
+          <button type="button" onClick={google} className="w-full rounded-full border border-border bg-card py-3 font-semibold flex items-center justify-center gap-2 hover:bg-muted">
+            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.07H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.83z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38z"/></svg>
+            Continue with Google
+          </button>
+          <div className="relative text-center text-xs text-muted-foreground"><span className="bg-card px-2 relative z-10">or</span><div className="absolute inset-x-0 top-1/2 h-px bg-border" /></div>
+
+          {mode === "signup" && (
+            <input className="input" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          )}
+          <input className="input" required type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="input" required type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+          <button disabled={loading} className="btn-primary w-full disabled:opacity-60">
+            {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+          </button>
+          <p className="text-sm text-center text-muted-foreground">
+            {mode === "signin" ? "New here? " : "Already have an account? "}
+            <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="font-semibold text-primary">
+              {mode === "signin" ? "Create account" : "Sign in"}
+            </button>
           </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-[11px] uppercase tracking-wider font-normal text-background/70">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@wildhaven.com"
-              className="bg-background/10 border-background/20 text-background placeholder:text-background/30 focus-visible:ring-primary"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-[11px] uppercase tracking-wider font-normal text-background/70">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="bg-background/10 border-background/20 text-background placeholder:text-background/30 focus-visible:ring-primary"
-              required
-            />
-          </div>
-
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full text-[11px] uppercase tracking-wider font-normal"
-          >
-            {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
-          </Button>
         </form>
-
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-xs text-background/50 hover:text-background/80 font-light transition-colors"
-          >
-            {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
-          </button>
-        </div>
-
-        <div className="mt-6 flex flex-col items-center gap-4">
-          <Button
-            variant="default"
-            onClick={() => navigate("/admin?demo=true")}
-            className="w-full rounded-full text-[11px] uppercase tracking-wider font-normal"
-          >
-            Try Demo Mode
-          </Button>
-          <button
-            onClick={() => navigate("/")}
-            className="text-xs text-background/40 hover:text-background/60 font-light transition-colors flex items-center gap-1"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Back to site
-          </button>
-        </div>
-      </motion.div>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          <Link to="/" className="hover:text-foreground">← Back to home</Link>
+        </p>
+      </section>
     </div>
   );
-};
-
-export default Auth;
+}
