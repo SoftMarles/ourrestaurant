@@ -14,16 +14,279 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dishes: {
+        Row: {
+          calories: number | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_vegetarian: boolean
+          name: string
+          prep_minutes: number | null
+          price_cents: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_vegetarian?: boolean
+          name: string
+          prep_minutes?: number | null
+          price_cents: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_vegetarian?: boolean
+          name?: string
+          prep_minutes?: number | null
+          price_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          dish_id: string | null
+          dish_name: string
+          id: string
+          line_total_cents: number
+          order_id: string
+          quantity: number
+          unit_price_cents: number
+        }
+        Insert: {
+          created_at?: string
+          dish_id?: string | null
+          dish_name: string
+          id?: string
+          line_total_cents: number
+          order_id: string
+          quantity: number
+          unit_price_cents: number
+        }
+        Update: {
+          created_at?: string
+          dish_id?: string | null
+          dish_name?: string
+          id?: string
+          line_total_cents?: number
+          order_id?: string
+          quantity?: number
+          unit_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address: string | null
+          created_at: string
+          fulfillment: Database["public"]["Enums"]["fulfillment_type"]
+          guest_email: string
+          guest_name: string
+          guest_phone: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_cents: number
+          tracking_code: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          fulfillment?: Database["public"]["Enums"]["fulfillment_type"]
+          guest_email: string
+          guest_name: string
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_cents?: number
+          tracking_code?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          fulfillment?: Database["public"]["Enums"]["fulfillment_type"]
+          guest_email?: string
+          guest_name?: string
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_cents?: number
+          tracking_code?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          dietary_notes: string | null
+          full_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          dietary_notes?: string | null
+          full_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          dietary_notes?: string | null
+          full_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          created_at: string
+          guest_email: string
+          guest_name: string
+          guest_phone: string | null
+          id: string
+          notes: string | null
+          occasion: string | null
+          party_size: number
+          reserved_for: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          tracking_code: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          guest_email: string
+          guest_name: string
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          occasion?: string | null
+          party_size: number
+          reserved_for: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          tracking_code?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          guest_email?: string
+          guest_name?: string
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          occasion?: string | null
+          party_size?: number
+          reserved_for?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          tracking_code?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      lookup_tracking: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff" | "customer"
+      fulfillment_type: "delivery" | "pickup" | "dine_in"
+      order_status:
+        | "received"
+        | "preparing"
+        | "ready"
+        | "out_for_delivery"
+        | "completed"
+        | "cancelled"
+      reservation_status:
+        | "pending"
+        | "confirmed"
+        | "seated"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +413,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff", "customer"],
+      fulfillment_type: ["delivery", "pickup", "dine_in"],
+      order_status: [
+        "received",
+        "preparing",
+        "ready",
+        "out_for_delivery",
+        "completed",
+        "cancelled",
+      ],
+      reservation_status: [
+        "pending",
+        "confirmed",
+        "seated",
+        "completed",
+        "cancelled",
+      ],
+    },
   },
 } as const
