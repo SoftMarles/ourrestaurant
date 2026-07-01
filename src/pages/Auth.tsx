@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -7,11 +7,20 @@ import { toast } from "sonner";
 
 export default function Auth() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get("next") || "/account";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session) nav(next, { replace: true });
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [nav, next]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,23 +30,23 @@ export default function Auth() {
       setLoading(false);
       if (error) return toast.error(error.message);
       toast.success("Signed in");
-      nav("/account");
+      nav(next, { replace: true });
     } else {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin, data: { full_name: fullName } },
+        options: { emailRedirectTo: window.location.origin + next, data: { full_name: fullName } },
       });
       setLoading(false);
       if (error) return toast.error(error.message);
-      toast.success("Check your email to confirm your account.");
+      toast.success("Account created. If email confirmation is required, check your inbox.");
     }
   };
 
   const google = async () => {
-    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + next });
     if (res.error) toast.error(res.error.message);
-    if (!res.redirected && !res.error) nav("/account");
+    if (!res.redirected && !res.error) nav(next, { replace: true });
   };
 
   return (

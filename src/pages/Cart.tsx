@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, LogIn } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
@@ -20,7 +20,7 @@ const schema = z.object({
 
 export default function Cart() {
   const { items, setQty, remove, clear, totalCents } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -32,11 +32,27 @@ export default function Cart() {
     notes: "",
   });
 
+  useEffect(() => {
+    if (!user) return;
+    setForm((f) => ({ ...f, guest_email: f.guest_email || user.email || "" }));
+    supabase.from("profiles").select("full_name, phone").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+      if (data) setForm((f) => ({
+        ...f,
+        guest_name: f.guest_name || data.full_name || "",
+        guest_phone: f.guest_phone || data.phone || "",
+      }));
+    });
+  }, [user]);
+
   const total = totalCents();
 
   const checkout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
+    if (!user) {
+      nav("/auth?next=/cart");
+      return;
+    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
@@ -45,7 +61,7 @@ export default function Cart() {
     setLoading(true);
     const { data: order, error } = await supabase
       .from("orders")
-      .insert({ ...parsed.data, user_id: user?.id ?? null, total_cents: total } as any)
+      .insert({ ...parsed.data, user_id: user.id, total_cents: total } as any)
       .select("id, tracking_code")
       .single();
     if (error || !order) {
