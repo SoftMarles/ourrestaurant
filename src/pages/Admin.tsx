@@ -6,7 +6,7 @@ import { useAuth, useRoles } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type Tab = "reservations" | "orders" | "dishes";
+type Tab = "reservations" | "orders" | "dishes" | "users";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -38,8 +38,8 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="mt-8 flex gap-2 border-b border-border">
-          {(["reservations", "orders", "dishes"] as Tab[]).map((t) => (
+        <div className="mt-8 flex gap-2 border-b border-border flex-wrap">
+          {(["reservations", "orders", "dishes", ...(isAdmin || demo ? ["users" as Tab] : [])] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`px-5 py-3 text-sm font-semibold capitalize border-b-2 transition ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
               {t}
             </button>
@@ -50,6 +50,7 @@ export default function Admin() {
           {tab === "reservations" && <ReservationsTab />}
           {tab === "orders" && <OrdersTab />}
           {tab === "dishes" && <DishesTab canEdit={isAdmin || demo} />}
+          {tab === "users" && (isAdmin || demo) && <UsersTab canEdit={isAdmin || demo} />}
         </div>
       </section>
       <Footer />
