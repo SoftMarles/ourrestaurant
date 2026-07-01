@@ -11,6 +11,7 @@ import Track from "./pages/Track";
 import Account from "./pages/Account";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
+import AdminLogin from "./pages/AdminLogin";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/track" element={<Track />} />
           <Route path="/track/:code" element={<Track />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/about" element={<About />} />
