@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, LogIn } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
@@ -20,7 +20,7 @@ const schema = z.object({
 
 export default function Cart() {
   const { items, setQty, remove, clear, totalCents } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -32,11 +32,27 @@ export default function Cart() {
     notes: "",
   });
 
+  useEffect(() => {
+    if (!user) return;
+    setForm((f) => ({ ...f, guest_email: f.guest_email || user.email || "" }));
+    supabase.from("profiles").select("full_name, phone").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+      if (data) setForm((f) => ({
+        ...f,
+        guest_name: f.guest_name || data.full_name || "",
+        guest_phone: f.guest_phone || data.phone || "",
+      }));
+    });
+  }, [user]);
+
   const total = totalCents();
 
   const checkout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
+    if (!user) {
+      nav("/auth?next=/cart");
+      return;
+    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
@@ -45,7 +61,7 @@ export default function Cart() {
     setLoading(true);
     const { data: order, error } = await supabase
       .from("orders")
-      .insert({ ...parsed.data, user_id: user?.id ?? null, total_cents: total } as any)
+      .insert({ ...parsed.data, user_id: user.id, total_cents: total } as any)
       .select("id, tracking_code")
       .single();
     if (error || !order) {
@@ -107,35 +123,53 @@ export default function Cart() {
               ))}
             </div>
 
-            <form onSubmit={checkout} className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)] space-y-4 h-fit sticky top-24">
-              <h2 className="font-display text-xl font-bold">Checkout</h2>
-              <div className="text-sm text-muted-foreground">No online payment — pay on delivery or pickup.</div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {(["delivery", "pickup", "dine_in"] as const).map((f) => (
-                  <button type="button" key={f} onClick={() => setForm({ ...form, fulfillment: f })}
-                    className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wide ${form.fulfillment === f ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}>
-                    {f.replace("_", " ")}
-                  </button>
-                ))}
+            {!user ? (
+              <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)] h-fit sticky top-24 text-center">
+                <LogIn className="mx-auto h-10 w-10 text-primary" />
+                <h2 className="mt-3 font-display text-xl font-bold">Sign in to check out</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  We need an account so you can track your order and reorder easily.
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  <Link to="/auth?next=/cart" className="btn-primary w-full">Sign in</Link>
+                  <Link to="/auth?next=/cart" className="btn-ghost w-full">Create account</Link>
+                </div>
+                <div className="mt-5 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Cart total</span>
+                  <span className="font-display text-lg font-bold text-primary">{formatPrice(total)}</span>
+                </div>
               </div>
+            ) : (
+              <form onSubmit={checkout} className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)] space-y-4 h-fit sticky top-24">
+                <h2 className="font-display text-xl font-bold">Checkout</h2>
+                <div className="text-sm text-muted-foreground">No online payment — pay on delivery or pickup.</div>
 
-              <input required placeholder="Full name *" value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="input" />
-              <input required type="email" placeholder="Email *" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="input" />
-              <input placeholder="Phone" value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} className="input" />
-              {form.fulfillment === "delivery" && (
-                <textarea required={form.fulfillment === "delivery"} placeholder="Delivery address *" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input min-h-20" />
-              )}
-              <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-16" />
+                <div className="grid grid-cols-3 gap-2">
+                  {(["delivery", "pickup", "dine_in"] as const).map((f) => (
+                    <button type="button" key={f} onClick={() => setForm({ ...form, fulfillment: f })}
+                      className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wide ${form.fulfillment === f ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}>
+                      {f.replace("_", " ")}
+                    </button>
+                  ))}
+                </div>
 
-              <div className="flex items-center justify-between border-t border-border pt-4">
-                <span className="text-muted-foreground">Total</span>
-                <span className="font-display text-2xl font-bold text-primary">{formatPrice(total)}</span>
-              </div>
-              <button disabled={loading} className="btn-primary w-full disabled:opacity-60">
-                {loading ? "Placing order…" : "Place Order"}
-              </button>
-            </form>
+                <input required placeholder="Full name *" value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="input" />
+                <input required type="email" placeholder="Email *" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="input" />
+                <input placeholder="Phone" value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} className="input" />
+                {form.fulfillment === "delivery" && (
+                  <textarea required={form.fulfillment === "delivery"} placeholder="Delivery address *" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input min-h-20" />
+                )}
+                <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-16" />
+
+                <div className="flex items-center justify-between border-t border-border pt-4">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-display text-2xl font-bold text-primary">{formatPrice(total)}</span>
+                </div>
+                <button disabled={loading} className="btn-primary w-full disabled:opacity-60">
+                  {loading ? "Placing order…" : "Place Order"}
+                </button>
+              </form>
+            )}
           </div>
         )}
       </section>
