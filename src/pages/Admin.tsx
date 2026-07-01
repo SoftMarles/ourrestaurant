@@ -192,3 +192,99 @@ function DishesTab({ canEdit }: { canEdit: boolean }) {
     </div>
   );
 }
+
+type AppRole = "admin" | "staff" | "customer";
+const ROLES: AppRole[] = ["admin", "staff", "customer"];
+
+function UsersTab({ canEdit }: { canEdit: boolean }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [rolesByUser, setRolesByUser] = useState<Record<string, AppRole[]>>({});
+  const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const [{ data: profiles }, { data: roles }] = await Promise.all([
+      supabase.from("profiles").select("user_id, full_name, phone, created_at").order("created_at", { ascending: false }),
+      supabase.from("user_roles").select("user_id, role"),
+    ]);
+    const map: Record<string, AppRole[]> = {};
+    (roles ?? []).forEach((r: any) => {
+      map[r.user_id] = [...(map[r.user_id] ?? []), r.role];
+    });
+    setRolesByUser(map);
+    setRows(profiles ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const toggleRole = async (userId: string, role: AppRole, has: boolean) => {
+    if (!canEdit) return;
+    if (has) {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
+      if (error) return toast.error(error.message);
+    } else {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+      if (error) return toast.error(error.message);
+    }
+    toast.success("Role updated");
+    load();
+  };
+
+  const filtered = rows.filter((r) => {
+    const q = filter.toLowerCase();
+    return !q || (r.full_name ?? "").toLowerCase().includes(q) || r.user_id.includes(q);
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <input className="input max-w-sm" placeholder="Search by name or user id…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <div className="text-sm text-muted-foreground">{rows.length} user{rows.length === 1 ? "" : "s"}</div>
+      </div>
+      {loading && <p className="text-muted-foreground">Loading…</p>}
+      {!loading && filtered.length === 0 && <p className="text-muted-foreground">No users found.</p>}
+      <div className="space-y-3">
+        {filtered.map((u) => {
+          const userRoles = rolesByUser[u.user_id] ?? [];
+          return (
+            <div key={u.user_id} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)] grid md:grid-cols-[1fr_auto] gap-4 items-center">
+              <div>
+                <div className="font-display font-bold">{u.full_name || "(no name set)"}</div>
+                <div className="text-xs text-muted-foreground font-mono">{u.user_id}</div>
+                {u.phone && <div className="text-sm text-muted-foreground">{u.phone}</div>}
+                <div className="text-xs text-muted-foreground mt-1">Joined {new Date(u.created_at).toLocaleDateString()}</div>
+              </div>
+              <div className="flex gap-2 flex-wrap justify-end">
+                {ROLES.map((role) => {
+                  const has = userRoles.includes(role);
+                  return (
+                    <button
+                      key={role}
+                      disabled={!canEdit}
+                      onClick={() => toggleRole(u.user_id, role, has)}
+                      className={`rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wide border transition ${
+                        has
+                          ? role === "admin"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : role === "staff"
+                            ? "bg-secondary text-secondary-foreground border-secondary"
+                            : "bg-muted text-foreground border-border"
+                          : "bg-transparent text-muted-foreground border-border hover:text-foreground"
+                      } ${!canEdit ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      {has ? "✓ " : ""}{role}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Click a role chip to grant or revoke it. Only admins see this tab.
+      </p>
+    </div>
+  );
+}
